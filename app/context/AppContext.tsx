@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type AppContextType = any;
 
@@ -8,11 +9,26 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [spaces, setSpaces] = useState<any[]>([]);
 
-  const login = (username: string) => {
-    setUser({ username });
+  useEffect(() => {
+    const cargarSesion = async () => {
+      const usuarioGuardado = await AsyncStorage.getItem('usuario');
+      if (usuarioGuardado) {
+        setUser(JSON.parse(usuarioGuardado)); // ✅ restaura sesión
+      }
+    };
+    cargarSesion();
+  }, []);
+
+
+  const login = async (username: string) => {
+    const usuario = { username };
+    await AsyncStorage.setItem('usuario', JSON.stringify(usuario));
+    setUser(usuario);
   };
 
-  const logout = () => {
+
+  const logout = async () => {
+    await AsyncStorage.removeItem('usuario');
     setUser(null);
   };
 

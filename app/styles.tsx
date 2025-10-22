@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#666',
     marginBottom: 20,
   },
@@ -305,6 +305,23 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 20,
   },
+  linkText: {
+    marginTop: 15,
+    color: '#007AFF',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  messageText: {
+    marginTop: 10,
+    color: '#333',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#e74c3c',
+    marginTop: 10,
+    textAlign: 'center',
+  }
 });
 
 export default styles;

@@ -1,18 +1,38 @@
+import { iniciarSesion } from '@/services/usuarios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
-import { SafeAreaView, StatusBar, View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { SafeAreaView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { default as styles } from '../styles';
 
-export const SignInScreen = ({ onSignIn }: { onSignIn: () => void }) => {
+export const SignInScreen = ({
+  toHome,
+  onSwitchToSignUp,
+}: {
+  toHome: () => void;
+  onSwitchToSignUp: () => void;
+}) => {
   const [username, setUsername] = useState('');
+  const [mensaje, setMensaje] = useState('');
   const { login } = useApp();
 
-  const handleSignIn = () => {
-    if (username.trim()) {
-      login(username.trim());
-      onSignIn();
+  const handleSignIn = async () => {
+    if (!username.trim()) return;
+
+    try {
+      const data = await iniciarSesion(username.trim());
+      const usuario = { username: data.nickname };
+
+      await AsyncStorage.setItem('usuario', JSON.stringify(usuario));
+      login(usuario.username);
+      toHome();
+    } catch (error: any) {
+      console.error('Error al iniciar sesión:', error);
+      setMensaje('Usuario no encontrado o error de conexión');
     }
   };
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,6 +56,10 @@ export const SignInScreen = ({ onSignIn }: { onSignIn: () => void }) => {
           disabled={!username.trim()}
         >
           <Text style={styles.buttonText}>Entrar</Text>
+        </TouchableOpacity>
+        {mensaje !== '' && <Text style={styles.errorText}>{mensaje}</Text>}
+        <TouchableOpacity onPress={onSwitchToSignUp}>
+          <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
