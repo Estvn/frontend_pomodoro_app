@@ -152,6 +152,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: '#fff',
     fontWeight: 'bold',
+    marginBottom: 6,
   },
   modalOverlay: {
     flex: 1,
@@ -321,7 +322,26 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     marginTop: 10,
     textAlign: 'center',
-  }
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 48,
+    color: '#333',
+    paddingHorizontal: 12,
+  },
 });
 
 export default styles;

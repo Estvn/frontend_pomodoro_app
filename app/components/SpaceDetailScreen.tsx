@@ -1,15 +1,57 @@
-import React, { useState } from 'react';
-import { SafeAreaView, StatusBar, View, Text, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
+import { getPomodoroRules, getPomodoroTypes, PomodoroRule, PomodoroType } from '@/services/pomodoros';
+import { Picker } from '@react-native-picker/picker';
+import React, { useEffect, useState } from 'react';
+import { Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
-import { formatTimeDetailed, formatDate } from '../utils/helpers';
+import { formatDate, formatTimeDetailed } from '../utils/helpers';
 
-export const SpaceDetailScreen = ({ spaceId, onBack, onStartPomodoro }: { spaceId: string; onBack: () => void; onStartPomodoro: (spaceId: string, duration: number, breakTime: number) => void }) => {
+
+export const SpaceDetailScreen = ({
+  spaceId,
+  onBack,
+  onStartPomodoro,
+}: {
+  spaceId: string;
+  onBack: () => void;
+  onStartPomodoro: (
+    spaceId: string,
+    duration: number,
+    breakTime: number,
+    ruleId: string,
+    typeId: string
+  ) => void;
+}) => {
+
   const { spaces } = useApp();
   const space = spaces.find((s: any) => s.id === spaceId);
   const [showModal, setShowModal] = useState(false);
   const [duration, setDuration] = useState('25');
   const [breakTime, setBreakTime] = useState('5');
+  const [rules, setRules] = useState<PomodoroRule[]>([]);
+  const [types, setTypes] = useState<PomodoroType[]>([]);
+  const [selectedRuleId, setSelectedRuleId] = useState('');
+  const [selectedTypeId, setSelectedTypeId] = useState('');
+
+
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const reglas = await getPomodoroRules();
+        const tipos = await getPomodoroTypes();
+        setRules(reglas);
+        setTypes(tipos);
+        if (reglas.length > 0) setSelectedRuleId(reglas[0].id_pomodoro_rule.toString());
+        if (tipos.length > 0) setSelectedTypeId(tipos[0].id_pomodoro_type.toString());
+      } catch (error) {
+        console.error('Error al cargar reglas o tipos:', error);
+      }
+    };
+    fetchOptions();
+  }, []);
+
+
 
   if (!space) return null;
 
@@ -18,7 +60,7 @@ export const SpaceDetailScreen = ({ spaceId, onBack, onStartPomodoro }: { spaceI
     const breakNum = parseInt(breakTime);
 
     if (durationNum > 0 && breakNum >= 0) {
-      onStartPomodoro(spaceId, durationNum, breakNum);
+      onStartPomodoro(spaceId, durationNum, breakNum, selectedRuleId, selectedTypeId);
       setShowModal(false);
       setDuration('25');
       setBreakTime('5');
@@ -51,14 +93,14 @@ export const SpaceDetailScreen = ({ spaceId, onBack, onStartPomodoro }: { spaceI
         <Text style={styles.sectionTitle}>Historial</Text>
 
         <ScrollView style={styles.historyList}>
-      {space.pomodoros
-        .slice()
-        .reverse()
-        .map((pomodoro: any) => (
+          {space.pomodoros
+            .slice()
+            .reverse()
+            .map((pomodoro: any) => (
               <View key={pomodoro.id} style={styles.historyCard}>
                 <View style={styles.historyHeader}>
                   <Text style={styles.historyStatus}>
-                    {pomodoro.completed ? '✓ Completado' : '⏱ En progreso'}
+                    {pomodoro.completed ? '✅ Completado' : '⛔ Interrumpido'}
                   </Text>
                   <Text style={styles.historyTime}>{formatTimeDetailed(pomodoro.completedTime)}</Text>
                 </View>
@@ -96,6 +138,47 @@ export const SpaceDetailScreen = ({ spaceId, onBack, onStartPomodoro }: { spaceI
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Nueva Sesión Pomodoro</Text>
+
+
+
+            <Text style={styles.label}>Regla Pomodoro</Text>
+            <View >
+              <Picker
+                selectedValue={selectedRuleId}
+                onValueChange={(itemValue) => setSelectedRuleId(itemValue)}
+                style={styles.input}
+              >
+                {rules.map((rule) => (
+                  <Picker.Item
+                    key={rule.id_pomodoro_rule}
+                    label={`${rule.difficulty_level} (${rule.focus_duration}m/${rule.break_duration}m)`}
+                    value={rule.id_pomodoro_rule.toString()}
+                  />
+                ))}
+              </Picker>
+            </View>
+            {selectedRuleId && (
+              <Text style={styles.helperText}>
+                {rules.find((r) => r.id_pomodoro_rule.toString() === selectedRuleId)?.description}
+              </Text>
+            )}
+
+            <Text style={styles.label}>Tipo Pomodoro</Text>
+            <View >
+              <Picker
+                selectedValue={selectedTypeId}
+                onValueChange={(itemValue) => setSelectedTypeId(itemValue)}
+                style={styles.input}
+              >
+                {types.map((type) => (
+                  <Picker.Item
+                    key={type.id_pomodoro_type}
+                    label={type.name_type}
+                    value={type.id_pomodoro_type.toString()}
+                  />
+                ))}
+              </Picker>
+            </View>
 
             <Text style={styles.label}>Duración (minutos)</Text>
             <TextInput

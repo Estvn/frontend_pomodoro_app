@@ -1,19 +1,27 @@
 import React, { useState } from 'react';
 import { Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { crearSesion } from '../../services/sesiones';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
 import { formatTimeForHome } from '../utils/helpers';
 
+
 export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: string) => void }) => {
-  const { user, spaces, logout, createSpace } = useApp();
+  const { user, spaces, logout, loadSpacesFromBackend } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [spaceName, setSpaceName] = useState('');
 
-  const handleCreateSpace = () => {
-    if (spaceName.trim()) {
-      createSpace(spaceName.trim());
+  const handleCreateSpace = async () => {
+    if (!spaceName.trim() || !user) return;
+
+    try {
+      await crearSesion(user.id_user, spaceName.trim());
+      await loadSpacesFromBackend(user.id_user); // ✅ recarga desde el backend
+
       setSpaceName('');
       setShowModal(false);
+    } catch (error: any) {
+      console.error('Error al crear sesión:', error);
     }
   };
 

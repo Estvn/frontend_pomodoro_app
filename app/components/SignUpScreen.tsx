@@ -21,13 +21,11 @@ export const SignUpScreen = ({
         setMensaje('');
 
         try {
-            const data = await crearUsuario(nickname.trim());
-            console.log("data:", data);
-            if (data) {
-                login(nickname.trim());
-                toHome();
-            }
-            // setMensaje(`Usuario ${nickname} creado exitosamente`);
+            const usuario = await crearUsuario(nickname.trim());
+            console.log("usuario:", usuario);
+            await login(usuario.id_user, usuario.nickname);
+            toHome();
+            setMensaje(`Usuario ${nickname} creado exitosamente`);
         } catch (error: any) {
             setMensaje(error.response?.data?.detail || 'Error al registrar');
         }

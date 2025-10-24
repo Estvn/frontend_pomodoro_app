@@ -1,7 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { SafeAreaView, StatusBar, Text, View, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { finalizarPausa, iniciarPausa } from '../../services/pausas';
+import { finalizarPomodoroEnBackend, iniciarPomodoroEnBackend } from '../../services/pomodoros';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
+
 
 export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spaceId: string; pomodoroConfig: { duration: number; breakTime: number }; onFinish: () => void }) => {
   const { spaces, updatePomodoro } = useApp();
@@ -11,6 +14,8 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
   const [timeLeft, setTimeLeft] = useState(pomodoroConfig.duration * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
+  const [pauseId, setPauseId] = useState<number | null>(null);
+  const [pomodoroDetailId, setPomodoroDetailId] = useState<number | null>(null);
   const [completedWorkTime, setCompletedWorkTime] = useState(0);
   const completedWorkRef = useRef(completedWorkTime);
 
@@ -18,13 +23,35 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
     completedWorkRef.current = completedWorkTime;
   }, [completedWorkTime]);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback(async () => {
+    if (!pomodoroDetailId) {
+      console.warn('No se pudo finalizar el pomodoro: ID no disponible');
+      return;
+    }
     if (pomodoro) {
       updatePomodoro(spaceId, pomodoro.id, completedWorkRef.current, true);
+      space.totalTime += completedWorkRef.current;
+      if (completedWorkRef.current > 0) {
+        try {
+          await finalizarPomodoroEnBackend(pomodoroDetailId, completedWorkRef.current, true);
+        } catch (error) {
+          console.error('Error al guardar pomodoro:', error);
+        }
+      } else {
+        console.warn('Pomodoro no guardado: tiempo trabajado es cero');
+      }
+    }
+    if (pauseId) {
+      try {
+        await finalizarPausa(pauseId);
+        setPauseId(null);
+      } catch (error) {
+        console.error('Error al finalizar pausa activa:', error);
+      }
     }
     onFinish();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId, pomodoro?.id, updatePomodoro, onFinish]);
+  }, [spaceId, pomodoro, pomodoroDetailId, updatePomodoro, onFinish, pauseId]);
+
 
   useEffect(() => {
     let interval: any;
@@ -65,7 +92,7 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
 
   const handleStop = () => {
     if (pomodoro) {
-      updatePomodoro(spaceId, pomodoro.id, completedWorkRef.current, true);
+      updatePomodoro(spaceId, pomodoro.id, completedWorkRef.current, false);
     }
     onFinish();
   };
@@ -98,7 +125,27 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
         {!isRunning ? (
           <TouchableOpacity
             style={[styles.button, styles.buttonLarge]}
-            onPress={() => setIsRunning(true)}
+            onPress={async () => {
+              if (
+                timeLeft === pomodoroConfig.duration * 60 &&
+                pomodoro &&
+                pomodoroDetailId === null
+              ) {
+                const id = await iniciarPomodoroEnBackend({
+                  id_session: parseInt(spaceId),
+                  id_pomodoro_rule: pomodoro.ruleId,
+                  id_pomodoro_type: pomodoro.typeId,
+                  planned_duration: pomodoro.duration,
+                });
+                setPomodoroDetailId(id);
+              }
+              if (pauseId) {
+                await finalizarPausa(pauseId);
+                setPauseId(null);
+              }
+
+              setIsRunning(true);
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.buttonText}>
@@ -108,7 +155,15 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
         ) : (
           <TouchableOpacity
             style={[styles.button, styles.buttonLarge, styles.buttonWarning]}
-            onPress={() => setIsRunning(false)}
+            onPress={async () => {
+              if (pauseId === null) {
+                setIsRunning(false);
+                if (pomodoro?.id) {
+                  const id = await iniciarPausa(Number(pomodoro.id));
+                  setPauseId(id);
+                }
+              }
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.buttonText}>Pausar</Text>
@@ -127,6 +182,11 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
       <Text style={styles.timerInfo}>
         Tiempo de trabajo: {Math.floor(completedWorkTime / 60)}m {completedWorkTime % 60}s
       </Text>
+      {/* <Text style={styles.timerInfo}>
+        Tiempo pausado: {Math.floor(space?.totalPauseMinutes ?? 0 / 60)}m {(space?.totalPauseMinutes ?? 0) % 60}s
+      </Text> */}
+
+
     </SafeAreaView>
   );
 };

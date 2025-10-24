@@ -18,20 +18,19 @@ export const SignInScreen = ({
 
   const handleSignIn = async () => {
     if (!username.trim()) return;
-
     try {
       const data = await iniciarSesion(username.trim());
-      const usuario = { username: data.nickname };
-
+      const usuario = {
+        id_user: data.id_user,
+        username: data.nickname,
+      };
       await AsyncStorage.setItem('usuario', JSON.stringify(usuario));
-      login(usuario.username);
-      toHome();
+      login(usuario.id_user, usuario.username);
     } catch (error: any) {
       console.error('Error al iniciar sesión:', error);
       setMensaje('Usuario no encontrado o error de conexión');
     }
   };
-
 
 
   return (
