@@ -4,8 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
-import { formatDate, formatTimeDetailed } from '../utils/helpers';
-
+import { formatTimeDetailed } from '../utils/helpers';
 
 export const SpaceDetailScreen = ({
   spaceId,
@@ -19,21 +18,40 @@ export const SpaceDetailScreen = ({
     duration: number,
     breakTime: number,
     ruleId: string,
-    typeId: string
+    typeId: string,
+    repetitions: number
   ) => void;
 }) => {
-
   const { spaces } = useApp();
   const space = spaces.find((s: any) => s.id === spaceId);
   const [showModal, setShowModal] = useState(false);
-  const [duration, setDuration] = useState('25');
-  const [breakTime, setBreakTime] = useState('5');
+  const [repetitions, setRepetitions] = useState('2');;
   const [rules, setRules] = useState<PomodoroRule[]>([]);
   const [types, setTypes] = useState<PomodoroType[]>([]);
   const [selectedRuleId, setSelectedRuleId] = useState('');
   const [selectedTypeId, setSelectedTypeId] = useState('');
+  const [estimatedTime, setEstimatedTime] = useState(0);
 
+  // Funcion para convertir segundos en horas y minutos
+  const formatSecondsToHours = (totalSeconds: number): string => {
+    const hours = Math.floor(totalSeconds / 60);
+    const minutes = Math.floor((totalSeconds % 60));
 
+    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${minutes}m`;
+  };
+
+  useEffect(() => {
+    const rule = rules.find((r) => r.id_pomodoro_rule.toString() === selectedRuleId);
+    const reps = parseInt(repetitions);
+    if (rule && reps > 0) {
+      const total = reps * rule.focus_duration + (reps - 1) * rule.break_duration;
+      setEstimatedTime(total);
+    } else {
+      setEstimatedTime(0);
+    }
+  }, [selectedRuleId, repetitions, rules]);
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -51,20 +69,50 @@ export const SpaceDetailScreen = ({
     fetchOptions();
   }, []);
 
-
-
   if (!space) return null;
 
+  // Funcion para manejar el inicio de un pomodoro
   const handleStartPomodoro = () => {
-    const durationNum = parseInt(duration);
-    const breakNum = parseInt(breakTime);
-
-    if (durationNum > 0 && breakNum >= 0) {
-      onStartPomodoro(spaceId, durationNum, breakNum, selectedRuleId, selectedTypeId);
+    const reps = parseInt(repetitions);
+    const rule = rules.find((r) => r.id_pomodoro_rule.toString() === selectedRuleId);
+    if (rule && reps > 0 && rule.break_duration >= 0) {
+      onStartPomodoro(
+        spaceId,
+        rule.focus_duration,
+        rule.break_duration,
+        selectedRuleId,
+        selectedTypeId,
+        reps
+      );
       setShowModal(false);
-      setDuration('25');
-      setBreakTime('5');
+      setRepetitions('2');
     }
+  };
+
+  // Funcion para parsear las notas (extrar las repeticiones de "notes")
+  const parseNotes = (notes: string | null) => {
+    try {
+      if (!notes) return { repeticiones: 0 };
+      const match = notes.match(/repeticiones=(\d+)/);
+      return { repeticiones: match ? parseInt(match[1]) : 0 };
+    } catch {
+      return { repeticiones: 0 };
+    }
+  };
+
+  // Formatea fechas para mostrarlas en la interfaz
+  const parseDate = (raw: any) => {
+    if (!raw) return null;
+    const fecha = new Date(raw);
+    if (isNaN(fecha.getTime())) return null;
+    return fecha.toLocaleString('es-HN', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -85,7 +133,10 @@ export const SpaceDetailScreen = ({
             <Text style={styles.statLabel}>Pomodoros</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{formatTimeDetailed(space.totalTime)}</Text>
+            <Text style={styles.statValue}>
+              {formatTimeDetailed(space.total_focus_seconds + space.total_break_seconds)}
+            </Text>
+
             <Text style={styles.statLabel}>Tiempo Total</Text>
           </View>
         </View>
@@ -96,21 +147,37 @@ export const SpaceDetailScreen = ({
           {space.pomodoros
             .slice()
             .reverse()
-            .map((pomodoro: any) => (
-              <View key={pomodoro.id} style={styles.historyCard}>
-                <View style={styles.historyHeader}>
-                  <Text style={styles.historyStatus}>
-                    {pomodoro.completed ? '✅ Completado' : '⛔ Interrumpido'}
+            .map((pomodoro: any) => {
+              const { repeticiones } = parseNotes(pomodoro.notes || '');
+              return (
+                <View key={pomodoro.id_pomodoro_detail} style={styles.historyCard}>
+                  <View style={styles.historyHeader}>
+                    <Text style={styles.historyStatus}>
+                      {pomodoro.completed ? '✅ Completado' : '⛔ Interrumpido'}
+                    </Text>
+                    {/* <Text style={styles.historyTime}>
+                      {typeof pomodoro.focusTime === 'number'
+                        ? `${Math.floor(pomodoro.focusTime / 60)}m ${pomodoro.focusTime % 60}s`
+                        : 'Tiempo no disponible'}
+                    </Text> */}
+                    <Text style={styles.historyTime}>
+                      {(() => {
+                        const rule = rules.find(r => r.id_pomodoro_rule === pomodoro.ruleId);
+                        return rule
+                          ? `(${rule.focus_duration}m/${rule.break_duration}m)`
+                          : 'Regla no disponible';
+                      })()}
+                    </Text>
+                  </View>
+                  <Text style={styles.historyDate}>
+                    {parseDate(pomodoro.created_date) || 'Fecha no disponible'}
                   </Text>
-                  <Text style={styles.historyTime}>{formatTimeDetailed(pomodoro.completedTime)}</Text>
+                  <Text style={styles.historyDetails}>
+                    Repeticiones: {repeticiones}  |  Enfoque: {typeof pomodoro.focusTime === 'number' ? formatTimeDetailed(pomodoro.focusTime) : '—'}  |  Descanso: {typeof pomodoro.breakTime === 'number' ? formatTimeDetailed(pomodoro.breakTime) : '—'}
+                  </Text>
                 </View>
-                <Text style={styles.historyDate}>{formatDate(pomodoro.startTime)}</Text>
-                <Text style={styles.historyDetails}>
-                  Duración: {Math.floor(pomodoro.duration / 60)}m • Descanso: {Math.floor(pomodoro.breakTime / 60)}m
-                </Text>
-              </View>
-            ))}
-
+              );
+            })}
           {space.pomodoros.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
@@ -138,8 +205,6 @@ export const SpaceDetailScreen = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Nueva Sesión Pomodoro</Text>
-
-
 
             <Text style={styles.label}>Regla Pomodoro</Text>
             <View >
@@ -180,25 +245,21 @@ export const SpaceDetailScreen = ({
               </Picker>
             </View>
 
-            <Text style={styles.label}>Duración (minutos)</Text>
+            <Text style={styles.label}>Repeticiones</Text>
             <TextInput
               style={styles.input}
-              placeholder="25"
-              value={duration}
-              onChangeText={setDuration}
+              placeholder="4"
+              value={repetitions}
+              onChangeText={setRepetitions}
               keyboardType="numeric"
               placeholderTextColor="#999"
             />
 
-            <Text style={styles.label}>Descanso (minutos)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="5"
-              value={breakTime}
-              onChangeText={setBreakTime}
-              keyboardType="numeric"
-              placeholderTextColor="#999"
-            />
+            <Text style={styles.label}>Tiempo Estimado</Text>
+
+            <Text style={[styles.input, { color: '#333', paddingVertical: 12 }]}>
+              {estimatedTime} minutos {estimatedTime > 60 && ` (${formatSecondsToHours(estimatedTime)})`}
+            </Text>
 
             <View style={styles.modalButtons}>
               <TouchableOpacity

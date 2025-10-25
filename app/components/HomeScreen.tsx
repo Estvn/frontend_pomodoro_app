@@ -3,7 +3,7 @@ import { Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableO
 import { crearSesion } from '../../services/sesiones';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
-import { formatTimeForHome } from '../utils/helpers';
+import { formatTimeDetailed } from '../utils/helpers';
 
 
 export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: string) => void }) => {
@@ -11,13 +11,12 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
   const [showModal, setShowModal] = useState(false);
   const [spaceName, setSpaceName] = useState('');
 
+  // Funcion para crear una nueva sesión (o espacio de trabajo)
   const handleCreateSpace = async () => {
     if (!spaceName.trim() || !user) return;
-
     try {
       await crearSesion(user.id_user, spaceName.trim());
-      await loadSpacesFromBackend(user.id_user); // ✅ recarga desde el backend
-
+      await loadSpacesFromBackend(user.id_user);
       setSpaceName('');
       setShowModal(false);
     } catch (error: any) {
@@ -48,7 +47,7 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
           >
             <Text style={styles.spaceName}>{space.name}</Text>
             <Text style={styles.spaceStats}>
-              {space.pomodoros.length} pomodoros • {formatTimeForHome(space.totalTime)}
+              {space.pomodoros.length} pomodoros - {formatTimeDetailed(space.total_focus_seconds + space.total_break_seconds)}
             </Text>
           </TouchableOpacity>
         ))}
