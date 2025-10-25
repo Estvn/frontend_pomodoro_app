@@ -11,12 +11,11 @@ type IniciarPausaResponse = {
 type FinalizarPausaResponse = {
     pausa: {
         id_pause: number;
-        total_pause_minutes: number;
+        total_pause_seconds: number;
         pause_start: string;
         pause_end: string;
     };
 };
-
 
 export const iniciarPausa = async (id_pomodoro_detail: number): Promise<number> => {
     const response = await api.post<IniciarPausaResponse>('/pausas/', null, {

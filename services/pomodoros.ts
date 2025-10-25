@@ -13,74 +13,64 @@ export type PomodoroType = {
     name_type: string;
 };
 
-type IniciarPomodoroResponse = {
-    pomodoro: {
-        id_pomodoro_detail: number;
-    };
-};
-
-type FinalizarPomodoroResponse = {
-    pomodoro: {
-        id_pomodoro_detail: number;
-    };
-};
-
-type PomodoroDetail = {
+export type PomodoroDetail = {
     id_pomodoro_detail: number;
-    duration: number;
-    completed_time: number;
-    start_time: string;
-    end_time: string | null;
+    planned_duration: number;
+    focus_time: number;
+    break_time: number;
     is_completed: boolean;
     id_pomodoro_rule: number;
     id_pomodoro_type: number;
+    notes: string | null;
+    created_date: string;
 };
 
 
-export const iniciarPomodoroEnBackend = async ({
-    id_session,
-    id_pomodoro_rule,
-    id_pomodoro_type,
-    event_type = 'focus',
-    planned_duration,
-    notes = null,
-}: {
+export async function crearPomodoroEnBackend(data: {
     id_session: number;
     id_pomodoro_rule: number;
     id_pomodoro_type: number;
-    event_type?: string;
+    event_type: 'focus' | 'break';
     planned_duration: number;
-    notes?: string | null;
-}) => {
-    const response = await api.post<IniciarPomodoroResponse>('/pomodoros/', null, {
-        params: {
-            id_session,
-            id_pomodoro_rule,
-            id_pomodoro_type,
-            event_type,
-            planned_duration,
-            notes,
-        },
-    });
-    console.log('Pomodoro response:', response.data);
-    return response.data.pomodoro.id_pomodoro_detail;
+    is_completed: boolean;
+    notes: string | null;
+}): Promise<{ id_pomodoro_detail: number }> {
+    try {
+        const response = await api.post<{ id_pomodoro_detail: number }>('/pomodoros/crear', data);
+        return response.data;
+    } catch (error) {
+        console.error('Error al crear pomodoro:', error);
+        throw new Error('No se pudo crear el pomodoro');
+    }
+}
 
-};
-
-export const finalizarPomodoroEnBackend = async (
+export async function actualizarPomodoroEnBackend(
     id_pomodoro_detail: number,
-    completed_time: number,
-    is_completed: boolean = true
-) => {
-    const response = await api.put<FinalizarPomodoroResponse>(
-        `/pomodoros/${id_pomodoro_detail}/completar`,
-        {
-            completed_time,
-            is_completed,
-        }
-    );
-    return response.data.pomodoro;
-};
+    isCompleted: boolean,
+    focusSeconds: number,
+    breakSeconds: number,
+    repetitions: number,
+    interrupted: boolean
+): Promise<{ message: string }> {
+    const notes = `repeticiones=${repetitions}`;
+    const payload = {
+        is_completed: isCompleted,
+        notes,
+        focus_seconds: focusSeconds,
+        break_seconds: breakSeconds,
+    };
+
+    try {
+        const response = await api.put<{ message: string }>(
+            `/pomodoros/${id_pomodoro_detail}`,
+            payload
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error al actualizar pomodoro:', error);
+        throw new Error('No se pudo actualizar el pomodoro');
+    }
+}
 
 
 export const listarPomodorosPorSesion = async (
@@ -95,8 +85,6 @@ export const listarPomodorosPorSesion = async (
     return data;
 };
 
-
-
 export const getPomodoroRules = async (): Promise<PomodoroRule[]> => {
     const response = await api.get<PomodoroRule[]>('/reglas-pomodoro/');
     return response.data;
@@ -106,5 +94,3 @@ export const getPomodoroTypes = async (): Promise<PomodoroType[]> => {
     const response = await api.get<PomodoroType[]>('/tipos-pomodoro/');
     return response.data;
 };
-
-

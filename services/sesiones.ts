@@ -10,9 +10,9 @@ export interface Sesion {
 export interface SesionBackend {
     id_session: number;
     session_name: string;
-    total_focus_minutes: number;
-    total_break_minutes: number;
-    total_pause_minutes: number;
+    total_focus_seconds: number;
+    total_break_seconds: number;
+    total_pause_seconds: number;
     created_date: string;
 }
 
@@ -22,7 +22,6 @@ export const crearSesion = async (id_user: number, session_name: string): Promis
     );
     return response.data.sesion;
 };
-
 
 export const listarSesiones = async (id_user: number): Promise<SesionBackend[]> => {
     const response = await api.get<SesionBackend[]>(`/sesiones/usuario/${id_user}`);
