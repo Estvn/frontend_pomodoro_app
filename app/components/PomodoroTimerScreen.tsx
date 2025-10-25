@@ -1,30 +1,74 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { SafeAreaView, StatusBar, Text, View, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SafeAreaView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { finalizarPausa, iniciarPausa } from '../../services/pausas';
+import { actualizarPomodoroEnBackend } from '../../services/pomodoros';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
 
-export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spaceId: string; pomodoroConfig: { duration: number; breakTime: number }; onFinish: () => void }) => {
-  const { spaces, updatePomodoro } = useApp();
-  const space = spaces.find((s: any) => s.id === spaceId);
-  const pomodoro = space?.pomodoros[space.pomodoros.length - 1];
 
+export const PomodoroTimerScreen = ({
+  spaceId,
+  pomodoroConfig,
+  repetitions = 1,
+  pomodoroId,
+  onFinish,
+}: {
+  spaceId: string;
+  pomodoroConfig: { duration: number; breakTime: number };
+  repetitions?: number;
+  pomodoroId: number;
+  onFinish: () => void;
+}) => {
+
+  const { spaces } = useApp();
+  const { refreshPomodoros } = useApp();
+  const space = spaces.find((s: any) => s.id === spaceId);
   const [timeLeft, setTimeLeft] = useState(pomodoroConfig.duration * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
+  const [pauseId, setPauseId] = useState<number | null>(null);
   const [completedWorkTime, setCompletedWorkTime] = useState(0);
   const completedWorkRef = useRef(completedWorkTime);
+  const [repetitionsLeft, setRepetitionsLeft] = useState(repetitions);
+  const [completedBreakTime, setCompletedBreakTime] = useState(0);
+  const completedBreakRef = useRef(completedBreakTime);
+
+  useEffect(() => {
+    completedBreakRef.current = completedBreakTime;
+  }, [completedBreakTime]);
 
   useEffect(() => {
     completedWorkRef.current = completedWorkTime;
   }, [completedWorkTime]);
 
-  const handleComplete = useCallback(() => {
-    if (pomodoro) {
-      updatePomodoro(spaceId, pomodoro.id, completedWorkRef.current, true);
+  // Funcion que se encarga de finalizar el pomodoro
+  const handleComplete = useCallback(async () => {
+    if (space) {
+      space.total_focus_seconds += completedWorkRef.current;
+    }
+    try {
+      await actualizarPomodoroEnBackend(
+        pomodoroId,
+        true,
+        completedWorkRef.current,
+        completedBreakRef.current,
+        repetitions,
+        false
+      );
+    } catch (error) {
+      console.error('Error al actualizar pomodoro:', error);
+    }
+    if (pauseId) {
+      try {
+        await finalizarPausa(pauseId);
+        setPauseId(null);
+      } catch (error) {
+        console.error('Error al finalizar pausa activa:', error);
+      }
     }
     onFinish();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId, pomodoro?.id, updatePomodoro, onFinish]);
+    refreshPomodoros(spaceId);
+  }, [onFinish, pauseId, space, repetitions, pomodoroId, spaceId, refreshPomodoros]);
 
   useEffect(() => {
     let interval: any;
@@ -35,24 +79,30 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
 
           if (!isBreak) {
             setCompletedWorkTime((c) => c + 1);
+          } else {
+            setCompletedBreakTime((c) => c + 1);
           }
 
           if (newTime === 0) {
             if (!isBreak) {
-              // Terminó el trabajo, iniciar descanso
-              if (pomodoroConfig.breakTime > 0) {
-                setIsBreak(true);
-                setIsRunning(false);
-                return pomodoroConfig.breakTime * 60;
+              if (repetitionsLeft > 1) {
+                if (pomodoroConfig.breakTime > 0) {
+                  setIsBreak(true);
+                  setIsRunning(false);
+                  setRepetitionsLeft((r) => r - 1);
+                  return pomodoroConfig.breakTime * 60;
+                } else {
+                  setRepetitionsLeft((r) => r - 1);
+                  return pomodoroConfig.duration * 60;
+                }
               } else {
-                // No hay descanso, finalizar
                 handleComplete();
                 return 0;
               }
             } else {
-              // Terminó el descanso
-              handleComplete();
-              return 0;
+              setIsBreak(false);
+              setIsRunning(false);
+              return pomodoroConfig.duration * 60;
             }
           }
 
@@ -61,21 +111,45 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft, isBreak, pomodoroConfig.breakTime, handleComplete]);
+  }, [isRunning, timeLeft, isBreak, pomodoroConfig.breakTime, handleComplete, pomodoroConfig.duration, repetitionsLeft]);
 
-  const handleStop = () => {
-    if (pomodoro) {
-      updatePomodoro(spaceId, pomodoro.id, completedWorkRef.current, true);
+  // Funcion para interrumpir el pomodoro
+  const handleStop = useCallback(async () => {
+    if (space) {
+      space.total_focus_seconds += completedWorkRef.current;
     }
+    try {
+      await actualizarPomodoroEnBackend(
+        pomodoroId,
+        false,
+        completedWorkRef.current,
+        completedBreakRef.current,
+        repetitions,
+        true
+      );
+    } catch (error) {
+      console.error('Error al actualizar pomodoro:', error);
+    }
+    if (pauseId) {
+      try {
+        await finalizarPausa(pauseId);
+        setPauseId(null);
+      } catch (error) {
+        console.error('Error al finalizar pausa activa:', error);
+      }
+    }
+    refreshPomodoros(spaceId);
     onFinish();
-  };
+  }, [onFinish, pauseId, space, repetitions, pomodoroId, spaceId, refreshPomodoros]);
 
+  // Funcion convierte una cantidad de segundos en formato de horas y minutos
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Funcion para calcular el progreso del pomodoro
   const progress = isBreak
     ? (pomodoroConfig.breakTime * 60 - timeLeft) / (pomodoroConfig.breakTime * 60)
     : (pomodoroConfig.duration * 60 - timeLeft) / (pomodoroConfig.duration * 60);
@@ -98,7 +172,18 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
         {!isRunning ? (
           <TouchableOpacity
             style={[styles.button, styles.buttonLarge]}
-            onPress={() => setIsRunning(true)}
+            onPress={async () => {
+              if (pauseId) {
+                await finalizarPausa(pauseId);
+                setPauseId(null);
+              }
+              if (timeLeft === 0) {
+                setTimeLeft(pomodoroConfig.duration * 60);
+                setRepetitionsLeft(repetitions);
+                setCompletedWorkTime(0);
+              }
+              setIsRunning(true);
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.buttonText}>
@@ -108,7 +193,13 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
         ) : (
           <TouchableOpacity
             style={[styles.button, styles.buttonLarge, styles.buttonWarning]}
-            onPress={() => setIsRunning(false)}
+            onPress={async () => {
+              if (pauseId === null) {
+                setIsRunning(false);
+                const id = await iniciarPausa(pomodoroId);
+                setPauseId(id);
+              }
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.buttonText}>Pausar</Text>
@@ -127,6 +218,10 @@ export const PomodoroTimerScreen = ({ spaceId, pomodoroConfig, onFinish }: { spa
       <Text style={styles.timerInfo}>
         Tiempo de trabajo: {Math.floor(completedWorkTime / 60)}m {completedWorkTime % 60}s
       </Text>
+      <Text style={styles.timerInfo}>
+        Tiempo de descanso: {Math.floor(completedBreakTime / 60)}m {completedBreakTime % 60}s
+      </Text>
+
     </SafeAreaView>
   );
 };

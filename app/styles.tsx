@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#666',
     marginBottom: 20,
   },
@@ -152,6 +152,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: '#fff',
     fontWeight: 'bold',
+    marginBottom: 6,
   },
   modalOverlay: {
     flex: 1,
@@ -304,6 +305,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 20,
+  },
+  linkText: {
+    marginTop: 15,
+    color: '#007AFF',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  messageText: {
+    marginTop: 10,
+    color: '#333',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  errorText: {
+    color: '#e74c3c',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 48,
+    color: '#333',
+    paddingHorizontal: 12,
   },
 });
 
