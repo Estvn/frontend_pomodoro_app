@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { iniciarPomodoroEnBackend } from '../../services/pomodoros';
+import { crearPomodoroEnBackend } from '../../services/pomodoros';
 import { HomeScreen } from '../components/HomeScreen';
 import { PomodoroTimerScreen } from '../components/PomodoroTimerScreen';
 import { SignInScreen } from '../components/SignInScreen';
@@ -12,7 +12,9 @@ const App = () => {
     const [currentScreen, setCurrentScreen] = useState<'signIn' | 'signUp' | 'home' | 'spaceDetail' | 'pomodoro' | null>(null);
     const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
     const [pomodoroConfig, setPomodoroConfig] = useState<{ duration: number; breakTime: number } | null>(null);
-    const { user, addPomodoro } = useApp();
+    const [repetitions, setRepetitions] = useState<number>(1);
+    const [pomodoroId, setPomodoroId] = useState<number | null>(null);
+    const { user } = useApp();
 
     useEffect(() => {
         if (user) {
@@ -37,32 +39,28 @@ const App = () => {
         duration: number,
         breakTime: number,
         ruleId: string,
-        typeId: string
+        typeId: string,
+        repetitions: number
     ) => {
-
         try {
-            const backendId = await iniciarPomodoroEnBackend({
+            const response = await crearPomodoroEnBackend({
                 id_session: parseInt(spaceId),
                 id_pomodoro_rule: parseInt(ruleId),
                 id_pomodoro_type: parseInt(typeId),
-                planned_duration: duration,
+                event_type: 'focus',
+                planned_duration: duration * repetitions + (repetitions - 1) * breakTime,
+                is_completed: false,
+                notes: null,
             });
 
-            addPomodoro(
-                spaceId,
-                duration,
-                breakTime,
-                backendId.toString(),
-                parseInt(ruleId),
-                parseInt(typeId)
-            );
+            setPomodoroId(response.id_pomodoro_detail);
             setPomodoroConfig({ duration, breakTime });
+            setRepetitions(repetitions);
             setSelectedSpaceId(spaceId);
             setCurrentScreen('pomodoro');
         } catch (error) {
-            console.error('Error al iniciar pomodoro en backend:', error);
+            console.error('Error al crear pomodoro:', error);
         }
-
     };
 
     if (!currentScreen) return null;
@@ -87,15 +85,21 @@ const App = () => {
                 <SpaceDetailScreen
                     spaceId={selectedSpaceId}
                     onBack={navigateToHome}
-                    onStartPomodoro={(spaceId, duration, breakTime, ruleId, typeId) => {
-                        void navigateToPomodoro(spaceId, duration, breakTime, ruleId, typeId);
+                    onStartPomodoro={(spaceId, duration, breakTime, ruleId, typeId, repetitions) => {
+                        void navigateToPomodoro(spaceId, duration, breakTime, ruleId, typeId, repetitions);
                     }}
-
                 />
+
             )}
 
-            {currentScreen === 'pomodoro' && selectedSpaceId && pomodoroConfig && (
-                <PomodoroTimerScreen spaceId={selectedSpaceId} pomodoroConfig={pomodoroConfig} onFinish={() => navigateToSpace(selectedSpaceId)} />
+            {currentScreen === 'pomodoro' && selectedSpaceId && pomodoroConfig && pomodoroId !== null && (
+                <PomodoroTimerScreen
+                    spaceId={selectedSpaceId}
+                    pomodoroConfig={pomodoroConfig}
+                    repetitions={repetitions}
+                    pomodoroId={pomodoroId}
+                    onFinish={() => navigateToSpace(selectedSpaceId)}
+                />
             )}
         </>
     );
