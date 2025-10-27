@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { crearPomodoroEnBackend } from '../../services/pomodoros';
+import { ForgotUsernameScreen } from '../components/ForgotUsernameScreen';
 import { HomeScreen } from '../components/HomeScreen';
 import { PomodoroTimerScreen } from '../components/PomodoroTimerScreen';
 import { SignInScreen } from '../components/SignInScreen';
@@ -9,7 +10,7 @@ import { useApp } from '../context/AppContext';
 
 
 const App = () => {
-    const [currentScreen, setCurrentScreen] = useState<'signIn' | 'signUp' | 'home' | 'spaceDetail' | 'pomodoro' | null>(null);
+    const [currentScreen, setCurrentScreen] = useState<'signIn' | 'signUp' | 'home' | 'spaceDetail' | 'pomodoro' | 'forgotUsername' |null>(null);
     const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
     const [pomodoroConfig, setPomodoroConfig] = useState<{ duration: number; breakTime: number } | null>(null);
     const [repetitions, setRepetitions] = useState<number>(1);
@@ -71,6 +72,7 @@ const App = () => {
                 <SignInScreen
                     toHome={navigateToHome}
                     onSwitchToSignUp={() => setCurrentScreen('signUp')}
+                    onForgotUsername={() => setCurrentScreen('forgotUsername')}
                 />
             )}
 
@@ -80,6 +82,14 @@ const App = () => {
                     onSwitchToSignIn={() => setCurrentScreen('signIn')}
                 />
             )}
+
+            {currentScreen === 'forgotUsername' && (
+                <ForgotUsernameScreen
+                    onBackToSignIn={() => setCurrentScreen('signIn')}
+                    onSwitchToSignUp={() => setCurrentScreen('signUp')}
+                />
+            )}
+
             {currentScreen === 'home' && <HomeScreen onNavigateToSpace={navigateToSpace} />}
             {currentScreen === 'spaceDetail' && selectedSpaceId && (
                 <SpaceDetailScreen

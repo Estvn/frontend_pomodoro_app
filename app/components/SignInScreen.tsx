@@ -5,12 +5,15 @@ import { SafeAreaView, StatusBar, Text, TextInput, TouchableOpacity, View } from
 import { useApp } from '../context/AppContext';
 import { default as styles } from '../styles';
 
+
 export const SignInScreen = ({
   toHome,
   onSwitchToSignUp,
+  onForgotUsername
 }: {
   toHome: () => void;
   onSwitchToSignUp: () => void;
+  onForgotUsername: () => void;
 }) => {
   const [username, setUsername] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -38,11 +41,11 @@ export const SignInScreen = ({
       <StatusBar barStyle="dark-content" />
       <View style={styles.centerContainer}>
         <Text style={styles.title}>🍅 Pomodoro Sessions</Text>
-        <Text style={styles.subtitle}>Bienvenido</Text>
+        <Text style={styles.subtitle}>Iniciar Sesión</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Ingresa tu nombre de usuario"
+          placeholder="Tu nombre de usuario"
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"
@@ -54,12 +57,20 @@ export const SignInScreen = ({
           onPress={handleSignIn}
           disabled={!username.trim()}
         >
-          <Text style={styles.buttonText}>Entrar</Text>
+          <Text style={styles.buttonText}>Ingresar</Text>
         </TouchableOpacity>
-        {mensaje !== '' && <Text style={styles.errorText}>{mensaje}</Text>}
-        <TouchableOpacity onPress={onSwitchToSignUp}>
-          <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
-        </TouchableOpacity>
+
+        {mensaje ? <Text style={styles.messageText}>{mensaje}</Text> : null}
+
+        <View style={styles.footerLinks}>
+          <TouchableOpacity onPress={onSwitchToSignUp}>
+            <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={onForgotUsername} style={{ marginTop: 10 }}>
+            <Text style={styles.linkText}>¿Olvidaste tu usuario?</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );

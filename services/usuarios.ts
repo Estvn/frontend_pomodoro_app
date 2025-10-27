@@ -1,14 +1,5 @@
 import api from '../api/client';
 
-type CrearUsuarioResponse = {
-    message: string;
-    usuario: {
-        id_user: number;
-        nickname: string;
-        created_date: string;
-    };
-};
-
 export interface Usuario {
     id_user: number;
     nickname: string;
@@ -20,7 +11,37 @@ export const iniciarSesion = async (nickname: string): Promise<Usuario> => {
     return response.data;
 };
 
-export const crearUsuario = async (nickname: string): Promise<Usuario> => {
-    const response = await api.post<CrearUsuarioResponse>('/usuarios/', { nickname });
-    return response.data.usuario;
-}
+export const iniciarRegistro = async (email: string, nickname: string): Promise<any> => {
+    const response = await api.post('/auth/start-registration', null, {
+        params: { email, nickname }
+    });
+    return response.data;
+};
+
+export const completarRegistro = async (email: string, codigo: string): Promise<any> => {
+    const response = await api.post('/auth/verify', null, {
+        params: { email, code: codigo }
+    });
+    return response.data;
+};
+
+export const reenviarCodigo = async (email: string): Promise<any> => {
+    const response = await api.post('/auth/resend-code', null, {
+        params: { email }
+    });
+    return response.data;
+};
+
+export const solicitarRecuperacionUsuario = async (email: string): Promise<any> => {
+  const response = await api.post('/auth/forgot-username', null, {
+    params: { email }
+  });
+  return response.data;
+};
+
+export const verificarRecuperacionUsuario = async (email: string, code: string): Promise<any> => {
+  const response = await api.post('/auth/verify-recovery', null, {
+    params: { email, code }
+  });
+  return response.data;
+};

@@ -313,15 +313,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   messageText: {
-    marginTop: 10,
-    color: '#333',
-    textAlign: 'center',
     fontSize: 14,
+    textAlign: 'center',
+    color: '#333',
+    marginBottom: 15,
+    paddingHorizontal: 10,
   },
   errorText: {
     color: '#e74c3c',
     marginTop: 10,
     textAlign: 'center',
+  },
+  footerLinks: {
+    marginTop: 30,
+    alignItems: 'center',
+    width: '100%',
+  },
+  instrucciones: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   helperText: {
     fontSize: 14,

@@ -18,8 +18,8 @@ type FinalizarPausaResponse = {
 };
 
 export const iniciarPausa = async (id_pomodoro_detail: number): Promise<number> => {
-    const response = await api.post<IniciarPausaResponse>('/pausas/', null, {
-        params: { id_pomodoro_detail },
+    const response = await api.post<IniciarPausaResponse>('/pausas/', {
+        id_pomodoro_detail: id_pomodoro_detail
     });
     return response.data.pausa.id_pause;
 };
