@@ -1,47 +1,108 @@
+import { Audio } from 'expo-av';
+import * as Notifications from 'expo-notifications';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { SafeAreaView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, SafeAreaView, StatusBar, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { finalizarPausa, iniciarPausa } from '../../services/pausas';
 import { actualizarPomodoroEnBackend } from '../../services/pomodoros';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
 
-
-export const PomodoroTimerScreen = ({
-  spaceId,
-  pomodoroConfig,
-  repetitions = 1,
-  pomodoroId,
-  onFinish,
-}: {
+// ✅ Tipado explícito de props
+interface PomodoroTimerScreenProps {
   spaceId: string;
   pomodoroConfig: { duration: number; breakTime: number };
   repetitions?: number;
   pomodoroId: number;
   onFinish: () => void;
-}) => {
+}
 
-  const { spaces } = useApp();
-  const { refreshPomodoros } = useApp();
+// ✅ Nueva configuración compatible con Expo SDK 51+ (agrega shouldShowBanner y shouldShowList)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+export const PomodoroTimerScreen: React.FC<PomodoroTimerScreenProps> = ({
+  spaceId,
+  pomodoroConfig,
+  repetitions = 1,
+  pomodoroId,
+  onFinish,
+}) => {
+  const { spaces, refreshPomodoros } = useApp();
   const space = spaces.find((s: any) => s.id === spaceId);
+
   const [timeLeft, setTimeLeft] = useState(pomodoroConfig.duration * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [pauseId, setPauseId] = useState<number | null>(null);
   const [completedWorkTime, setCompletedWorkTime] = useState(0);
-  const completedWorkRef = useRef(completedWorkTime);
-  const [repetitionsLeft, setRepetitionsLeft] = useState(repetitions);
   const [completedBreakTime, setCompletedBreakTime] = useState(0);
-  const completedBreakRef = useRef(completedBreakTime);
+  const [repetitionsLeft, setRepetitionsLeft] = useState(repetitions);
 
+  const completedWorkRef = useRef(completedWorkTime);
+  const completedBreakRef = useRef(completedBreakTime);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // 🔊 Cargar el sonido al montar
   useEffect(() => {
-    completedBreakRef.current = completedBreakTime;
-  }, [completedBreakTime]);
+    const loadSound = async () => {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/alarm.mp3')
+        );
+        soundRef.current = sound;
+      } catch (error) {
+        console.error('Error al cargar sonido:', error);
+      }
+    };
+    loadSound();
+    return () => {
+      if (soundRef.current) soundRef.current.unloadAsync();
+    };
+  }, []);
+
+  // 🕹️ Reproducir sonido o vibrar según la plataforma
+  const playSoundOrVibrate = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // 🎵 Web: solo sonido
+        if (soundRef.current) {
+          await soundRef.current.replayAsync();
+          setTimeout(async () => {
+            if (soundRef.current) await soundRef.current.stopAsync();
+          }, 3000);
+        }
+      } else {
+        // 📱 Móvil: vibrar y notificación (incluso en segundo plano)
+        Vibration.vibrate([500, 200, 500, 200, 500]);
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '¡Tiempo completado!',
+            body: isBreak ? 'El descanso ha terminado' : 'El pomodoro ha terminado',
+            sound: true,
+          },
+          trigger: null,
+        });
+      }
+    } catch (error) {
+      console.error('Error en playSoundOrVibrate:', error);
+    }
+  };
 
   useEffect(() => {
     completedWorkRef.current = completedWorkTime;
   }, [completedWorkTime]);
 
-  // Funcion que se encarga de finalizar el pomodoro
+  useEffect(() => {
+    completedBreakRef.current = completedBreakTime;
+  }, [completedBreakTime]);
+
   const handleComplete = useCallback(async () => {
     if (space) {
       space.total_focus_seconds += completedWorkRef.current;
@@ -84,6 +145,13 @@ export const PomodoroTimerScreen = ({
           }
 
           if (newTime === 0) {
+            playSoundOrVibrate();
+            Alert.alert(
+              isBreak ? '¡Descanso terminado!' : '¡Pomodoro completado!',
+              isBreak ? 'Es hora de volver al trabajo' : '¡Buen trabajo!',
+              [{ text: 'OK' }]
+            );
+
             if (!isBreak) {
               if (repetitionsLeft > 1) {
                 if (pomodoroConfig.breakTime > 0) {
@@ -105,7 +173,6 @@ export const PomodoroTimerScreen = ({
               return pomodoroConfig.duration * 60;
             }
           }
-
           return newTime;
         });
       }, 1000);
@@ -113,7 +180,6 @@ export const PomodoroTimerScreen = ({
     return () => clearInterval(interval);
   }, [isRunning, timeLeft, isBreak, pomodoroConfig.breakTime, handleComplete, pomodoroConfig.duration, repetitionsLeft]);
 
-  // Funcion para interrumpir el pomodoro
   const handleStop = useCallback(async () => {
     if (space) {
       space.total_focus_seconds += completedWorkRef.current;
@@ -142,14 +208,12 @@ export const PomodoroTimerScreen = ({
     onFinish();
   }, [onFinish, pauseId, space, repetitions, pomodoroId, spaceId, refreshPomodoros]);
 
-  // Funcion convierte una cantidad de segundos en formato de horas y minutos
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Funcion para calcular el progreso del pomodoro
   const progress = isBreak
     ? (pomodoroConfig.breakTime * 60 - timeLeft) / (pomodoroConfig.breakTime * 60)
     : (pomodoroConfig.duration * 60 - timeLeft) / (pomodoroConfig.duration * 60);
@@ -221,7 +285,6 @@ export const PomodoroTimerScreen = ({
       <Text style={styles.timerInfo}>
         Tiempo de descanso: {Math.floor(completedBreakTime / 60)}m {completedBreakTime % 60}s
       </Text>
-
     </SafeAreaView>
   );
 };
