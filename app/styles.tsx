@@ -20,6 +20,39 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  fabTip: {
+    position: 'absolute',
+    bottom: 0,  // justo encima del FAB
+    right: 20,   // alineado horizontalmente con el FAB
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fabTipText: {
+    fontSize: 16,
+    color: '#ff6347',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  spaceCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between', // Separa nombre y tiempo
+  },
+
+  spaceTime: {
+    color: 'red',       // Resaltado en rojo
+    fontWeight: 'bold', // Más destacado
+    fontSize: 16,       // Ajusta el tamaño a tu gusto
+  },
+  repetitionsText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ff6666', // rojo sutil
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 2, // menos espacio debajo para acercarlo al título
+    opacity: 0.9,
+  },
   content: {
     flex: 1,
     padding: 20,
@@ -168,10 +201,15 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
     color: '#333',
-    marginBottom: 20,
+  },
+  modalTitleHighlight: {
+    color: '#ff6347', // 🍅 tono rojo tipo pomodoro
+    fontWeight: '800',
   },
   modalButtons: {
     flexDirection: 'row',

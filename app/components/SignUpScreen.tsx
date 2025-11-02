@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SafeAreaView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { completarRegistro, iniciarRegistro, reenviarCodigo } from '../../services/usuarios';
 import { useApp } from '../context/AppContext';
 import { default as styles } from '../styles';
@@ -15,31 +16,54 @@ export const SignUpScreen = ({
     const [email, setEmail] = useState('');
     const [codigoVerificacion, setCodigoVerificacion] = useState('');
     const [paso, setPaso] = useState<'formulario' | 'verificacion'>('formulario');
-    const [mensaje, setMensaje] = useState('');
     const [cargando, setCargando] = useState(false);
     const { login } = useApp();
 
     const handleIniciarRegistro = async () => {
         if (!nickname.trim() || !email.trim()) {
-            setMensaje('Por favor completa todos los campos');
+            Toast.show({
+                type: 'error',
+                text1: 'Campos incompletos',
+                text2: 'Por favor completa todos los campos'
+            });
             return;
         }
 
         if (!email.includes('@')) {
-            setMensaje('Por favor ingresa un email válido');
+            Toast.show({
+                type: 'error',
+                text1: 'Email inválido',
+                text2: 'Por favor ingresa un email válido'
+            });
+            return;
+        }
+
+        const nicknameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!nicknameRegex.test(nickname)) {
+            Toast.show({
+                type: 'error',
+                text1: 'Nickname inválido',
+                text2: 'Solo se permiten letras, números y guiones bajos'
+            });
             return;
         }
 
         setCargando(true);
-        setMensaje('');
 
         try {
             const data = await iniciarRegistro(email.trim(), nickname.trim());
-            console.log("Código enviado:", data);
-            setMensaje(`Código de verificación enviado a ${email}`);
+            Toast.show({
+                type: 'success',
+                text1: 'Código enviado',
+                text2: `Código de verificación enviado a ${email}`
+            });
             setPaso('verificacion');
         } catch (error: any) {
-            setMensaje(error.response?.data?.detail || 'Error al iniciar registro');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: error.response?.data?.detail || 'Error al iniciar registro'
+            });
         } finally {
             setCargando(false);
         }
@@ -47,30 +71,35 @@ export const SignUpScreen = ({
 
     const handleCompletarRegistro = async () => {
         if (!codigoVerificacion.trim()) {
-            setMensaje('Por favor ingresa el código de verificación');
+            Toast.show({
+                type: 'error',
+                text1: 'Código requerido',
+                text2: 'Por favor ingresa el código de verificación'
+            });
             return;
         }
 
         setCargando(true);
-        setMensaje('');
 
         try {
             const data = await completarRegistro(email.trim(), codigoVerificacion.trim());
-            console.log("Usuario creado:", data);
-            
             const userId = data.usuario?.id_user;
-            
-            if (!userId) {
-                throw new Error('No se pudo obtener el ID del usuario creado');
-            }
-            
-            
+
+            if (!userId) throw new Error('No se pudo obtener el ID del usuario creado');
+
             login(userId, nickname.trim());
-            
+            Toast.show({
+                type: 'success',
+                text1: 'Registro exitoso',
+                text2: 'Tu cuenta ha sido creada correctamente'
+            });
             toHome();
-            
         } catch (error: any) {
-            setMensaje(error.response?.data?.detail || 'Error al verificar código');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: error.response?.data?.detail || 'Error al verificar código'
+            });
         } finally {
             setCargando(false);
         }
@@ -80,9 +109,17 @@ export const SignUpScreen = ({
         setCargando(true);
         try {
             await reenviarCodigo(email.trim());
-            setMensaje('Nuevo código enviado');
+            Toast.show({
+                type: 'success',
+                text1: 'Código reenviado',
+                text2: 'Se ha enviado un nuevo código de verificación'
+            });
         } catch (error: any) {
-            setMensaje(error.response?.data?.detail || 'Error al reenviar código');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: error.response?.data?.detail || 'Error al reenviar código'
+            });
         } finally {
             setCargando(false);
         }
@@ -129,11 +166,10 @@ export const SignUpScreen = ({
                     </>
                 ) : (
                     <>
-                        {/* ✅ AHORA instrucciones EXISTE */}
                         <Text style={styles.instrucciones}>
                             Ingresa el código de verificación que enviamos a {email}
                         </Text>
-                        
+
                         <TextInput
                             style={styles.input}
                             placeholder="Código de 6 dígitos"
@@ -160,12 +196,13 @@ export const SignUpScreen = ({
                     </>
                 )}
 
-                {mensaje ? <Text style={styles.messageText}>{mensaje}</Text> : null}
-                
                 <TouchableOpacity onPress={onSwitchToSignIn}>
                     <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia sesión</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* 🔹 Toast */}
+            <Toast />
         </SafeAreaView>
     );
 };

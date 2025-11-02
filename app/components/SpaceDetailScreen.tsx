@@ -1,7 +1,7 @@
 import { getPomodoroRules, getPomodoroTypes, PomodoroRule, PomodoroType } from '@/services/pomodoros';
 import { Picker } from '@react-native-picker/picker';
 import React, { useEffect, useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
 import { formatTimeDetailed } from '../utils/helpers';
@@ -25,18 +25,41 @@ export const SpaceDetailScreen = ({
   const { spaces } = useApp();
   const space = spaces.find((s: any) => s.id === spaceId);
   const [showModal, setShowModal] = useState(false);
-  const [repetitions, setRepetitions] = useState('2');;
+  const [repetitions, setRepetitions] = useState('2');
   const [rules, setRules] = useState<PomodoroRule[]>([]);
   const [types, setTypes] = useState<PomodoroType[]>([]);
   const [selectedRuleId, setSelectedRuleId] = useState('');
   const [selectedTypeId, setSelectedTypeId] = useState('');
   const [estimatedTime, setEstimatedTime] = useState(0);
 
-  // Funcion para convertir segundos en horas y minutos
+  // 🔹 Animación para la flecha
+  const arrowAnim = new Animated.Value(0);
+  useEffect(() => {
+    const animateArrow = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(arrowAnim, {
+            toValue: 20,           // distancia a la derecha
+            duration: 800,         // tiempo de ida
+            useNativeDriver: true,
+            isInteraction: false,  // importante para que no se detenga
+          }),
+          Animated.timing(arrowAnim, {
+            toValue: 0,            // vuelve a la posición inicial
+            duration: 800,         // tiempo de vuelta
+            useNativeDriver: true,
+            isInteraction: false,
+          }),
+        ])
+      ).start();
+    };
+
+    animateArrow();
+  }, []);
+
   const formatSecondsToHours = (totalSeconds: number): string => {
     const hours = Math.floor(totalSeconds / 60);
-    const minutes = Math.floor((totalSeconds % 60));
-
+    const minutes = Math.floor(totalSeconds % 60);
     if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
     if (hours > 0) return `${hours}h`;
     return `${minutes}m`;
@@ -71,7 +94,6 @@ export const SpaceDetailScreen = ({
 
   if (!space) return null;
 
-  // Funcion para manejar el inicio de un pomodoro
   const handleStartPomodoro = () => {
     const reps = parseInt(repetitions);
     const rule = rules.find((r) => r.id_pomodoro_rule.toString() === selectedRuleId);
@@ -89,7 +111,6 @@ export const SpaceDetailScreen = ({
     }
   };
 
-  // Funcion para parsear las notas (extrar las repeticiones de "notes")
   const parseNotes = (notes: string | null) => {
     try {
       if (!notes) return { repeticiones: 0 };
@@ -100,7 +121,6 @@ export const SpaceDetailScreen = ({
     }
   };
 
-  // Formatea fechas para mostrarlas en la interfaz
   const parseDate = (raw: any) => {
     if (!raw) return null;
     const fecha = new Date(raw);
@@ -136,7 +156,6 @@ export const SpaceDetailScreen = ({
             <Text style={styles.statValue}>
               {formatTimeDetailed(space.total_focus_seconds + space.total_break_seconds)}
             </Text>
-
             <Text style={styles.statLabel}>Tiempo Total</Text>
           </View>
         </View>
@@ -144,40 +163,32 @@ export const SpaceDetailScreen = ({
         <Text style={styles.sectionTitle}>Historial</Text>
 
         <ScrollView style={styles.historyList}>
-          {space.pomodoros
-            .slice()
-            .reverse()
-            .map((pomodoro: any) => {
-              const { repeticiones } = parseNotes(pomodoro.notes || '');
-              return (
-                <View key={pomodoro.id_pomodoro_detail} style={styles.historyCard}>
-                  <View style={styles.historyHeader}>
-                    <Text style={styles.historyStatus}>
-                      {pomodoro.completed ? '✅ Completado' : '⛔ Interrumpido'}
-                    </Text>
-                    {/* <Text style={styles.historyTime}>
-                      {typeof pomodoro.focusTime === 'number'
-                        ? `${Math.floor(pomodoro.focusTime / 60)}m ${pomodoro.focusTime % 60}s`
-                        : 'Tiempo no disponible'}
-                    </Text> */}
-                    <Text style={styles.historyTime}>
-                      {(() => {
-                        const rule = rules.find(r => r.id_pomodoro_rule === pomodoro.ruleId);
-                        return rule
-                          ? `(${rule.focus_duration}m/${rule.break_duration}m)`
-                          : 'Regla no disponible';
-                      })()}
-                    </Text>
-                  </View>
-                  <Text style={styles.historyDate}>
-                    {parseDate(pomodoro.created_date) || 'Fecha no disponible'}
+          {space.pomodoros.slice().reverse().map((pomodoro: any) => {
+            const { repeticiones } = parseNotes(pomodoro.notes || '');
+            return (
+              <View key={pomodoro.id_pomodoro_detail} style={styles.historyCard}>
+                <View style={styles.historyHeader}>
+                  <Text style={styles.historyStatus}>
+                    {pomodoro.completed ? '✅ Completado' : '⛔ Interrumpido'}
                   </Text>
-                  <Text style={styles.historyDetails}>
-                    Repeticiones: {repeticiones}  |  Enfoque: {typeof pomodoro.focusTime === 'number' ? formatTimeDetailed(pomodoro.focusTime) : '—'}  |  Descanso: {typeof pomodoro.breakTime === 'number' ? formatTimeDetailed(pomodoro.breakTime) : '—'}
+                  <Text style={styles.historyTime}>
+                    {(() => {
+                      const rule = rules.find(r => r.id_pomodoro_rule === pomodoro.ruleId);
+                      return rule
+                        ? `(${rule.focus_duration}m/${rule.break_duration}m)`
+                        : 'Regla no disponible';
+                    })()}
                   </Text>
                 </View>
-              );
-            })}
+                <Text style={styles.historyDate}>
+                  {parseDate(pomodoro.created_date) || 'Fecha no disponible'}
+                </Text>
+                <Text style={styles.historyDetails}>
+                  Repeticiones: {repeticiones} | Enfoque: {typeof pomodoro.focusTime === 'number' ? formatTimeDetailed(pomodoro.focusTime) : '—'} | Descanso: {typeof pomodoro.breakTime === 'number' ? formatTimeDetailed(pomodoro.breakTime) : '—'}
+                </Text>
+              </View>
+            );
+          })}
           {space.pomodoros.length === 0 && (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>
@@ -188,26 +199,57 @@ export const SpaceDetailScreen = ({
         </ScrollView>
       </View>
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowModal(true)}
-        activeOpacity={0.8}
-      >
+      {/* 🔹 Botón flotante */}
+      <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)} activeOpacity={0.8}>
         <Text style={styles.fabText}>▶</Text>
       </TouchableOpacity>
 
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowModal(false)}
-      >
+      {/* 🔹 Flecha animada solo si no hay pomodoros */}
+      {space.pomodoros.length === 0 && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            bottom: 30,
+            right: 130,
+            alignItems: 'center',
+            transform: [{ translateX: arrowAnim }],
+          }}
+        >
+          <Text
+            style={{
+              color: '#db1a1aff',
+              fontSize: 18,
+              marginBottom: 6,
+              textAlign: 'center',
+              fontWeight: '500',
+            }}
+          >
+            Toca aquí para comenzar tu primer Pomodoro
+          </Text>
+
+          <Text
+            style={{
+              fontSize: 36,
+              color: '#e53935',
+              fontWeight: 'bold',
+            }}
+          >
+            ─────▶
+          </Text>
+        </Animated.View>
+
+      )}
+
+      {/* 🔹 Modal */}
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Nueva Sesión Pomodoro</Text>
+            <Text style={styles.modalTitle}>
+              Nueva sesión de <Text style={styles.modalTitleHighlight}>{space.name}</Text>
+            </Text>
 
             <Text style={styles.label}>Regla Pomodoro</Text>
-            <View >
+            <View>
               <Picker
                 selectedValue={selectedRuleId}
                 onValueChange={(itemValue) => setSelectedRuleId(itemValue)}
@@ -229,7 +271,7 @@ export const SpaceDetailScreen = ({
             )}
 
             <Text style={styles.label}>Tipo Pomodoro</Text>
-            <View >
+            <View>
               <Picker
                 selectedValue={selectedTypeId}
                 onValueChange={(itemValue) => setSelectedTypeId(itemValue)}
@@ -256,7 +298,6 @@ export const SpaceDetailScreen = ({
             />
 
             <Text style={styles.label}>Tiempo Estimado</Text>
-
             <Text style={[styles.input, { color: '#333', paddingVertical: 12 }]}>
               {estimatedTime} minutos {estimatedTime > 60 && ` (${formatSecondsToHours(estimatedTime)})`}
             </Text>

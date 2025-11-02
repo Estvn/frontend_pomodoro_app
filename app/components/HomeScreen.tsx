@@ -1,32 +1,90 @@
-import React, { useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Animated, Modal, SafeAreaView, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { crearSesion } from '../../services/sesiones';
 import { useApp } from '../context/AppContext';
 import styles from '../styles';
 import { formatTimeDetailed } from '../utils/helpers';
-
 
 export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: string) => void }) => {
   const { user, spaces, logout, loadSpacesFromBackend } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [spaceName, setSpaceName] = useState('');
 
-  // Funcion para crear una nueva sesión (o espacio de trabajo)
+  // 🔹 Animación de la flecha
+  const arrowAnim = new Animated.Value(0);
+  useEffect(() => {
+    if (spaces.length === 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(arrowAnim, { toValue: -10, duration: 600, useNativeDriver: true }),
+          Animated.timing(arrowAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [spaces.length]);
+
+  // 🔹 Crear nueva sesión con validación de caracteres
   const handleCreateSpace = async () => {
-    if (!spaceName.trim() || !user) return;
+    const trimmedName = spaceName.trim();
+
+    // Validación vacía
+    if (!trimmedName) {
+      Toast.show({
+        type: 'error',
+        text1: 'Nombre vacío',
+        text2: 'Por favor ingresa un nombre para la sesión',
+      });
+      return;
+    }
+
+    // Validación usuario
+    if (!user) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'No se encontró usuario, por favor inicia sesión',
+      });
+      return;
+    }
+
+    // Validación caracteres especiales (solo letras, números, espacios, guiones y guion bajo)
+    const validNameRegex = /^[a-zA-Z0-9 _-]+$/;
+    if (!validNameRegex.test(trimmedName)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Nombre inválido',
+        text2: 'El nombre solo puede contener letras, números, espacios, guiones y guion bajo',
+      });
+      return;
+    }
+
     try {
-      await crearSesion(user.id_user, spaceName.trim());
+      await crearSesion(user.id_user, trimmedName);
       await loadSpacesFromBackend(user.id_user);
       setSpaceName('');
       setShowModal(false);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Sesión creada',
+        text2: `La sesión "${trimmedName}" se creó correctamente`,
+      });
     } catch (error: any) {
       console.error('Error al crear sesión:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error al crear sesión',
+        text2: error.response?.data?.detail || 'Ocurrió un error inesperado',
+      });
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+
+      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Hola, {user?.username}</Text>
@@ -37,6 +95,7 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
         </TouchableOpacity>
       </View>
 
+      {/* Contenido: espacios */}
       <ScrollView style={styles.content}>
         {spaces.map((space: any) => (
           <TouchableOpacity
@@ -45,10 +104,15 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
             onPress={() => onNavigateToSpace(space.id)}
             activeOpacity={0.7}
           >
-            <Text style={styles.spaceName}>{space.name}</Text>
-            <Text style={styles.spaceStats}>
-              {space.pomodoros.length} pomodoros - {formatTimeDetailed(space.total_focus_seconds + space.total_break_seconds)}
-            </Text>
+            <View style={styles.spaceCardContent}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.spaceName}>{space.name}</Text>
+                <Text style={styles.spaceStats}>{space.pomodoros.length} pomodoros</Text>
+              </View>
+              <Text style={styles.spaceTime}>
+                {formatTimeDetailed(space.total_focus_seconds + space.total_break_seconds)}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
 
@@ -61,6 +125,7 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
         )}
       </ScrollView>
 
+      {/* Botón flotante */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => setShowModal(true)}
@@ -69,6 +134,40 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
+      {/* Flecha animada para primer espacio */}
+      {spaces.length === 0 && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            bottom: 30,
+            right: 100,
+            transform: [{ translateY: arrowAnim }],
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={{
+              color: '#e81010ff',
+              fontSize: 18,
+              textAlign: 'center',
+              marginTop: 4,
+            }}
+          >
+            Crea tu primera sesión
+          </Text>
+          <Text
+            style={{
+              color: '#e53935',
+              fontSize: 36,
+              fontWeight: 'bold',
+            }}
+          >
+            ─────▶
+          </Text>
+        </Animated.View>
+      )}
+
+      {/* Modal para crear nueva sesión */}
       <Modal
         visible={showModal}
         transparent
@@ -100,10 +199,7 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.button,
-                  !spaceName.trim() && styles.buttonDisabled,
-                ]}
+                style={[styles.button, !spaceName.trim() && styles.buttonDisabled]}
                 onPress={handleCreateSpace}
                 disabled={!spaceName.trim()}
                 activeOpacity={0.7}
@@ -114,8 +210,12 @@ export const HomeScreen = ({ onNavigateToSpace }: { onNavigateToSpace: (id: stri
           </View>
         </View>
       </Modal>
+
+      {/* Toast */}
+      <Toast position="bottom" />
     </SafeAreaView>
   );
 };
 
 export default HomeScreen;
+
