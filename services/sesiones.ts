@@ -18,7 +18,8 @@ export interface SesionBackend {
 
 export const crearSesion = async (id_user: number, session_name: string): Promise<Sesion> => {
     const response = await api.post<{ sesion: Sesion }>(
-        `/sesiones/?id_user=${id_user}&session_name=${encodeURIComponent(session_name)}`
+        `/sesiones/`,
+        { id_user, session_name }
     );
     return response.data.sesion;
 };

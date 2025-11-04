@@ -12,36 +12,39 @@ export const iniciarSesion = async (nickname: string): Promise<Usuario> => {
 };
 
 export const iniciarRegistro = async (email: string, nickname: string): Promise<any> => {
-    const response = await api.post('/auth/start-registration', null, {
-        params: { email, nickname }
+    const response = await api.post('/auth/start-registration', {
+        email,
+        nickname
     });
     return response.data;
 };
 
 export const completarRegistro = async (email: string, codigo: string): Promise<any> => {
-    const response = await api.post('/auth/verify', null, {
-        params: { email, code: codigo }
+    const response = await api.post('/auth/verify', {
+        email,
+        code: codigo
     });
     return response.data;
 };
 
 export const reenviarCodigo = async (email: string): Promise<any> => {
-    const response = await api.post('/auth/resend-code', null, {
-        params: { email }
-    });
+    const response = await api.post('/auth/resend-code', {
+        email
+    })
     return response.data;
 };
 
 export const solicitarRecuperacionUsuario = async (email: string): Promise<any> => {
-  const response = await api.post('/auth/forgot-username', null, {
-    params: { email }
+  const response = await api.post('/auth/forgot-username', {
+    email
   });
   return response.data;
 };
 
 export const verificarRecuperacionUsuario = async (email: string, code: string): Promise<any> => {
-  const response = await api.post('/auth/verify-recovery', null, {
-    params: { email, code }
+  const response = await api.post('/auth/verify-recovery', {
+    email,
+    code
   });
   return response.data;
 };
