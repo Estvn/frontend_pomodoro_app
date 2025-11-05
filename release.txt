@@ -1,15 +1,41 @@
-# Crear imagen en docker
-docker buildx build --platform linux/amd64 -t pomodoro-front:latest . --load
+######################################################################
+# Release helper (zsh/bash) — build, tag and push to ACR
+# - Staging build shows the "Staging" dashboards
+# - Production build hides "Staging" by default
+#
+# Before running, set VERSION if needed.
+######################################################################
 
-# Correr en el contenedor de docker
-docker run -d -p 8000:8000 --name pomodoro-contaier --env-file .env pomodoro-api:latest
+# --- Config ---
+VERSION=1.0.4
+ACR_PRD=prodpomodoroacr
+IMAGE_LOCAL=pomodoro-ui
+REPO_PROD=${ACR_PRD}.azurecr.io/pomodoro-ui
 
-# Para implementar en el azure container registry
+
+########################################
+# 1) PRODUCTION: build locally and push
+########################################
+
+# Build PROD (staging hidden by default)
+docker buildx build \
+	--platform linux/amd64 \
+	-t ${IMAGE_LOCAL}:prod \
+	. --load
+
+# (Optional) Run locally
+docker rm -f pomodoro-ui 2>/dev/null || true
+docker run --env-file .env -p 80:80 -d --name pomodoro-ui ${IMAGE_LOCAL}:prod
+
+
+# Login to Azure & ACR
 az login
-az acr login --name acrpomodorofront
+az acr login --name ${ACR_PRD}
 
-docker tag pomodoro-front:latest acrpomodorofront.azurecr.io/pomodoro-front:latest
-docker tag pomodoro-front:latest acrpomodorofront.azurecr.io/pomodoro-front:1.3.0
+# Tag & Push PROD
+docker tag ${IMAGE_LOCAL}:prod ${REPO_PROD}:${VERSION}
+docker tag ${IMAGE_LOCAL}:prod ${REPO_PROD}:latest
+docker push ${REPO_PROD}:${VERSION}
+docker push ${REPO_PROD}:latest
 
-docker push acrpomodorofront.azurecr.io/pomodoro-front:latest
-docker push acrpomodorofront.azurecr.io/pomodoro-front:1.3.0
+
