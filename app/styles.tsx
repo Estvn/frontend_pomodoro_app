@@ -20,6 +20,39 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  fabTip: {
+    position: 'absolute',
+    bottom: 0,  // justo encima del FAB
+    right: 20,   // alineado horizontalmente con el FAB
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  fabTipText: {
+    fontSize: 16,
+    color: '#ff6347',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  spaceCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between', // Separa nombre y tiempo
+  },
+
+  spaceTime: {
+    color: 'red',       // Resaltado en rojo
+    fontWeight: 'bold', // Más destacado
+    fontSize: 16,       // Ajusta el tamaño a tu gusto
+  },
+  repetitionsText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ff6666', // rojo sutil
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 2, // menos espacio debajo para acercarlo al título
+    opacity: 0.9,
+  },
   content: {
     flex: 1,
     padding: 20,
@@ -31,7 +64,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#666',
     marginBottom: 20,
   },
@@ -152,6 +185,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
     color: '#fff',
     fontWeight: 'bold',
+    marginBottom: 6,
   },
   modalOverlay: {
     flex: 1,
@@ -167,10 +201,15 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 16,
     color: '#333',
-    marginBottom: 20,
+  },
+  modalTitleHighlight: {
+    color: '#ff6347', // 🍅 tono rojo tipo pomodoro
+    fontWeight: '800',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -304,6 +343,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 20,
+  },
+  linkText: {
+    marginTop: 15,
+    color: '#007AFF',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  messageText: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#333',
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  errorText: {
+    color: '#e74c3c',
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  footerLinks: {
+    marginTop: 30,
+    alignItems: 'center',
+    width: '100%',
+  },
+  instrucciones: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 48,
+    color: '#333',
+    paddingHorizontal: 12,
   },
 });
 

@@ -7,6 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "pomodoroapp",
     "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -14,12 +15,13 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "foregroundImage": "./assets/images/icon.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.pomodoro_account.PomodoroApp"
     },
     "web": {
       "output": "static",
@@ -38,11 +40,24 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sound": true,
+          "vibrate": true
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d776532f-f44d-4c62-b179-21e41c1760fe"
+      }
     }
   }
 }
